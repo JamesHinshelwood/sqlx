@@ -1,7 +1,4 @@
-use rustls::{
-    Certificate, ClientConfig, RootCertStore, ServerCertVerified, ServerCertVerifier, TLSError,
-    WebPKIVerifier,
-};
+use rustls::{Certificate, ClientConfig, RootCertStore, ServerCertVerified, ServerCertVerifier, TLSError, WebPKIVerifier};
 use sqlx_rt::fs;
 use std::sync::Arc;
 use std::{io::Cursor, path::Path};
@@ -13,6 +10,7 @@ pub async fn configure_tls_connector(
     accept_invalid_certs: bool,
     accept_invalid_hostnames: bool,
     root_cert_path: Option<&Path>,
+    client_cert_key_path: Option<(&Path, &Path)>,
 ) -> Result<sqlx_rt::TlsConnector, Error> {
     let mut config = ClientConfig::new();
 
@@ -31,6 +29,23 @@ pub async fn configure_tls_connector(
             config.root_store.add_pem_file(&mut cursor).map_err(|_| {
                 Error::Tls(format!("Invalid certificate file: {}", ca.display()).into())
             })?;
+        }
+
+        if let Some((cert_path, key_path)) = client_cert_key_path {
+            // FIXME: Using unstable internal APIs of rustls.
+            use rustls::internal::pemfile;
+
+            let cert_data = fs::read(cert_path).await?;
+            let mut cert_cursor = Cursor::new(cert_data);
+            let certs = pemfile::certs(&mut cert_cursor).unwrap();
+
+            let key_data = fs::read(key_path).await?;
+            let mut key_cursor = Cursor::new(key_data);
+            let key = pemfile::rsa_private_keys(&mut key_cursor).unwrap().pop().expect("empty keys");
+            config.set_single_client_cert(certs, key)
+                .map_err(|_| {
+                    Error::Tls(format!("Invalid client certificate or key file: {}, {}", cert_path.display(), key_path.display()).into())
+                })?;
         }
 
         if accept_invalid_hostnames {

@@ -38,11 +38,13 @@ where
         accept_invalid_certs: bool,
         accept_invalid_hostnames: bool,
         root_cert_path: Option<&Path>,
+        client_cert_key_path: Option<(&Path, &Path)>,
     ) -> Result<(), Error> {
         let connector = configure_tls_connector(
             accept_invalid_certs,
             accept_invalid_hostnames,
             root_cert_path,
+            client_cert_key_path,
         )
         .await?;
 
@@ -75,11 +77,14 @@ async fn configure_tls_connector(
     accept_invalid_certs: bool,
     accept_invalid_hostnames: bool,
     root_cert_path: Option<&Path>,
+    client_cert_key_path: Option<(&Path, &Path)>,
 ) -> Result<sqlx_rt::TlsConnector, Error> {
     use sqlx_rt::{
         fs,
         native_tls::{Certificate, TlsConnector},
     };
+
+    // FIXME: client_cert is ignored
 
     let mut builder = TlsConnector::builder();
     builder

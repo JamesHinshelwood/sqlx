@@ -53,6 +53,14 @@ impl FromStr for PgConnectOptions {
                     options = options.ssl_mode(value.parse().map_err(Error::config)?);
                 }
 
+                "sslcert" | "ssl-cert" => {
+                    options = options.ssl_cert(&*value);
+                }
+
+                "sslkey" | "ssl-key" => {
+                    options = options.ssl_key(&*value);
+                }
+
                 "sslrootcert" | "ssl-root-cert" | "ssl-ca" => {
                     options = options.ssl_root_cert(&*value);
                 }

@@ -23,6 +23,8 @@ pub use ssl_mode::PgSslMode;
 /// |Parameter|Default|Description|
 /// |---------|-------|-----------|
 /// | `sslmode` | `prefer` | Determines whether or with what priority a secure SSL TCP/IP connection will be negotiated. See [`PgSqlSslMode`]. |
+/// | `sslcert` | `None` | Sets the name of a file containing the client SSL certificate. |
+/// | `sslkey` | `None` | Sets the location for the secret key used for the client certificate. Only file names are supported. |
 /// | `sslrootcert` | `None` | Sets the name of a file containing a list of trusted SSL Certificate Authorities. |
 /// | `statement-cache-capacity` | `100` | The maximum number of prepared statements stored in the cache. Set to `0` to disable. |
 /// | `host` | `None` | Path to the directory containing a PostgreSQL unix domain socket, which will be used instead of TCP if set. |
@@ -82,6 +84,8 @@ pub struct PgConnectOptions {
     pub(crate) password: Option<String>,
     pub(crate) database: Option<String>,
     pub(crate) ssl_mode: PgSslMode,
+    pub(crate) ssl_cert: Option<PathBuf>,
+    pub(crate) ssl_key: Option<PathBuf>,
     pub(crate) ssl_root_cert: Option<PathBuf>,
     pub(crate) statement_cache_capacity: usize,
     pub(crate) application_name: Option<String>,
@@ -107,6 +111,8 @@ impl PgConnectOptions {
     ///  * `PGDATABASE`
     ///  * `PGSSLROOTCERT`
     ///  * `PGSSLMODE`
+    ///  * `PGSSLCERT`
+    ///  * `PGSSLKEY`
     ///  * `PGAPPNAME`
     ///
     /// # Example
@@ -135,6 +141,8 @@ impl PgConnectOptions {
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or_default(),
+            ssl_cert: var("PGSSLCERT").ok().map(PathBuf::from),
+            ssl_key: var("PGSSLKEY").ok().map(PathBuf::from),
             statement_cache_capacity: 100,
             application_name: var("PGAPPNAME").ok(),
             log_settings: Default::default(),
@@ -250,6 +258,16 @@ impl PgConnectOptions {
     /// ```
     pub fn ssl_mode(mut self, mode: PgSslMode) -> Self {
         self.ssl_mode = mode;
+        self
+    }
+
+    pub fn ssl_cert(mut self, cert: impl AsRef<Path>) -> Self {
+        self.ssl_cert = Some(cert.as_ref().to_path_buf());
+        self
+    }
+
+    pub fn ssl_key(mut self, key: impl AsRef<Path>) -> Self {
+        self.ssl_key = Some(key.as_ref().to_path_buf());
         self
     }
 
